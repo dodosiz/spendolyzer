@@ -25,23 +25,13 @@ interface Transaction {
   amount: number;
 }
 
-const columns: GridColDef[] = [
-  { field: "id", headerName: "ID", width: 70 },
-  { field: "payee", headerName: "Payee", width: 130 },
-  {
-    field: "amount",
-    headerName: "Amount",
-    type: "number",
-    width: 90,
-  },
-];
-
 const paginationModel = { page: 0, pageSize: 50 };
 
 export function App() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [income, setIncome] = React.useState<number>(0);
   const [costs, setCosts] = React.useState<number>(0);
+  const [columns, setColumns] = React.useState<GridColDef[]>([]);
   const handleUpload = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) {
@@ -58,7 +48,8 @@ export function App() {
           const amount = parseFloat(row[AMOUNT_COLUMN]);
           if (payee && payee.length && !isNaN(amount)) {
             if (amount < 0) {
-              totals[payee] = (totals[payee] || 0) + amount;
+              const firstWord = payee.split(" ")[0];
+              totals[firstWord] = (totals[firstWord] || 0) + amount;
               costsSum += amount;
             } else {
               incomeSum += amount;
@@ -78,6 +69,25 @@ export function App() {
         setTransactions(aggregatedTransactions);
         setIncome(incomeSum);
         setCosts(costsSum);
+        setColumns([
+          { field: "id", headerName: "ID", width: 70 },
+          { field: "payee", headerName: "Payee", width: 130 },
+          {
+            field: "amount",
+            headerName: "Amount",
+            type: "number",
+            width: 90,
+          },
+          {
+            field: "percentage",
+            headerName: "Percentage",
+            width: 90,
+            valueGetter: (_value, row) =>
+              `${
+                Math.floor((row.amount / Math.abs(costsSum)) * 10000) / 100
+              } %`,
+          },
+        ]);
       },
     });
   };
@@ -101,7 +111,7 @@ export function App() {
         </Button>
         <h2>Income: {income}</h2>
         <h2>Costs: {costs}</h2>
-        <h2>Balance: {income + costs}</h2>
+        <h2>Balance: {income - Math.abs(costs)}</h2>
         <Paper sx={{ height: 400, width: "100%" }}>
           <DataGrid
             rows={transactions}
